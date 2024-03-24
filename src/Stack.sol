@@ -21,8 +21,11 @@ contract Stack {
     event TokensUnstaked(address indexed user, uint256 amount);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+    error OwnableInvalidOwner(address owner);
+
+
     constructor(address _domTokenAddress, uint _minimumStakeAmount) {
-        domeToken = _domTokenAddress;
+        domeToken = Token(_domTokenAddress);
         minimumStakeAmount = _minimumStakeAmount;
         owner = msg.sender;
     }
@@ -50,7 +53,7 @@ contract Stack {
     function stackToken() public minimumStake() payable{
         bool success = domeToken.transfer(address(this), msg.value);
         require(success);
-        User memory user = User(msg.value, true);
+        User memory user = User(msg.value, true, false);
         stackedUser[msg.sender] = user;
         emit TokensStaked(msg.sender, msg.value);
     }
@@ -77,9 +80,15 @@ contract Stack {
     }
 
     function transferOwnership(address newOwner) public onlyOwner {
+          if (newOwner == address(0)) {
+            revert OwnableInvalidOwner(address(0));
+        }
         _transferOwnership(newOwner);
-        emit OwnershipTransferred(owner, newOwner);
     }
 
-
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
 }
