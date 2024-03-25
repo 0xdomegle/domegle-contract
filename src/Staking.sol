@@ -10,7 +10,7 @@ contract Staking is Ownable {
     ///// ERRORS /////
     //////////////////
     error Staking__InsufficientStakeAmount();
-    error Staking__InsufficientTokenBalance();
+    error Staking__InsufficientTokenBalance(uint256);
     error Staking__UserNotStaked();
     error Staking__UserSuspended();
     error Staking__TransferFailed();
@@ -31,7 +31,8 @@ contract Staking is Ownable {
     ///// EVENTS /////
     //////////////////
     event TokensStaked(address indexed user, uint256 amount);
-    event TokensUnstaked(address indexed user, uint256 amount);
+    event TokensUnstakedPartially(address indexed user, uint256 amount);
+    event TokensUnstakedFully(address user);
 
     ///////////////////
     //// MODIFIERS ////
@@ -65,10 +66,10 @@ contract Staking is Ownable {
         s_minimumStakeAmount = _minimumStakeAmount;
     }
 
-    function stakeToken(uint256 _amountToStake) external userNotSuspended minimumStake(_amountToStake) {
+    function stake(uint256 _amountToStake) external userNotSuspended minimumStake(_amountToStake) {
         // check user has enough token balance to stake
         if (s_domToken.balanceOf(msg.sender) < _amountToStake) {
-            revert Staking__InsufficientTokenBalance();
+            revert Staking__InsufficientTokenBalance(s_domToken.balanceOf(msg.sender));
         }
 
         // store user details
@@ -82,19 +83,25 @@ contract Staking is Ownable {
         }
     }
 
-    function withdrawStakeAmount(uint256 _amountToWithdraw) external userNotSuspended moreThanZero(_amountToWithdraw) {
+    function withdraw(uint256 _amountToWithdraw) external userNotSuspended moreThanZero(_amountToWithdraw) {
         // check withdrawal amount is less than or equal to staked amount
         if (_amountToWithdraw > s_userToStakeAmount[msg.sender]) {
             revert Staking__WithdrawAmountCannotBeGreaterThanStaked();
         }
-        // check if after withdrawal the staked amount is still more than minimumStakeAmount
-        if (s_userToStakeAmount[msg.sender] - _amountToWithdraw < s_minimumStakeAmount) {
+        // check if after withdrawal the staked amount is still more than minimumStakeAmount and more than 0
+        uint256 balanceAfterWithdrawal = s_userToStakeAmount[msg.sender] - _amountToWithdraw;
+        if (balanceAfterWithdrawal < s_minimumStakeAmount && balanceAfterWithdrawal > 0) {
             revert Staking__StakeAmountCannotBeLessThanMinimumAfterWithdrawal();
         }
 
         // update user details
         s_userToStakeAmount[msg.sender] -= _amountToWithdraw;
-        emit TokensUnstaked(msg.sender, _amountToWithdraw);
+
+        if (balanceAfterWithdrawal == 0) {
+            emit TokensUnstakedFully(msg.sender);
+        } else {
+            emit TokensUnstakedPartially(msg.sender, _amountToWithdraw);
+        }
 
         // return staked tokens
         bool success = s_domToken.transfer(msg.sender, _amountToWithdraw);
