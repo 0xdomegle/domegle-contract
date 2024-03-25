@@ -51,9 +51,9 @@ contract StakingTest is Test {
         vm.stopPrank();
     }
 
-    ////////////////////
-    ///// withdraw /////
-    ////////////////////
+    //////////////////
+    //// withdraw ////
+    //////////////////
     modifier userStaked() {
         vm.startPrank(user);
         domToken.approve(address(stake), amountToStake);
