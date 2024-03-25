@@ -12,7 +12,7 @@ contract StakingTest is Test {
     Staking stake;
     address user = makeAddr("USER");
     address owner;
-    uint256 amountToStake = 20 ether;
+    uint256 amountToStake = 25 ether;
 
     function setUp() public {
         Deploy deployer = new Deploy();
